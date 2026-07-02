@@ -1,0 +1,41 @@
+@startuml C4_Container_Deposit_MVP
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
+
+Container_Boundary(abs_boundary, "АБС (монолит + БД)") {
+  Container(abs_app, "АБС Application", "Delphi, PL/SQL\nБизнес‑логика, лимиты, договоры, ставки")
+  ContainerDb(abs_db, "АБС Database", "Oracle\nДанные счетов, договоров, клиентов, лимитов")
+}
+
+Container_Boundary(ib_boundary, "Интернет‑банк") {
+  Container(ib_web, "Интернет‑банк Web", "ASP.NET MVC\nФронтенд, контроллеры, СМС‑подтверждение, подача заявок")
+  ContainerDb(ib_db, "Интернет‑банк DB", "MS SQL\nСессии, пользователи, локальные справочники, кэш ставок")
+  Container(ib_rate_cache, "Rate & Limit Cache Service", "Go\nКэширование ставок, расчёт лимитов, быстрый ответ (мс)")
+}
+
+Container_Boundary(cc_boundary, "Кол‑центр") {
+  Container(cc_api, "Кол‑центр API", "Java Spring Boot\nОбработка заявок, статусы, скрипты")
+  ContainerDb(cc_db, "Кол‑центр DB", "PostgreSQL\nЗаявки, истории звонков, скрипты")
+}
+
+Container(sms_service, "СМС‑сервис", "Любой стек\nОркестрация уведомлений, очереди, логи")
+ContainerDb(sms_db, "СМС БД", "Любая СУБД\nОчереди уведомлений, статусы доставки")
+
+Container(queue_layer, "Промежуточная очередь заявок", "RabbitMQ / Kafka\nБуферизация заявок для АБС, контроль темпа")
+
+Rel_Back(abs_app, abs_db, "чтение/запись данных (PL/SQL, JDBC)")
+Rel_Back(ib_web, ib_db, "аутентификация, сессии, локальный кэш")
+Rel_Back(cc_api, cc_db, "хранение заявок и скриптов")
+Rel_Back(sms_service, sms_db, "очередь уведомлений, статусы")
+
+Rel(ib_web, ib_rate_cache, "получает ставки и лимиты (HTTP API)\n(ответ за миллисекунды)")
+Rel(ib_rate_cache, abs_db, "читает лимиты и правила (JDBC, Read‑only)\n(фоновая синхронизация)")
+
+Rel(ib_web, queue_layer, "отправляет заявку на депозит (очередь)\n(защита АБС от пиковой нагрузки)")
+Rel(cc_api, queue_layer, "передает особые условия и статусы (очередь)")
+Rel(queue_layer, abs_app, "обрабатывает заявки в контролируемом темпе (API)\n(приоритизация, контроль RPS)")
+
+Rel(abs_app, sms_service, "запускает уведомления (HTTP / очередь)\n(подтверждение ставки, открытие депозита)")
+
+Rel(cc_api, abs_app, "синхронизирует особые условия и статусы (API)")
+
+@enduml

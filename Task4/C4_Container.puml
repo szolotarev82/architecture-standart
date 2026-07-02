@@ -1,0 +1,45 @@
+@startuml C4_Container_Rates_To_CallCenters
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
+
+Container_Boundary(abs_boundary, "АБС") {
+  Container(abs_app, "Приложение АБС", "Бизнес‑логика и управление продуктами/ставками")
+  ContainerDb(abs_db, "БД АБС", "Хранение ставок, договоров, справочников")
+}
+
+Container_Boundary(rate_cache_boundary, "Сервис кэширования ставок") {
+  Container(rate_api, "API ставок", "Отдаёт ставки потребителям (TTL ≤ 15 мин)")
+  Container(rate_sync, "Синхронизатор ставок", "Забирает ставки из АБС, обновляет кэш")
+  Container(rate_exporter, "Экспортер файлов", "Формирует CSV, добавляет контрольную сумму, выкладывает на SFTP")
+  ContainerDb(rate_cache_store, "Кэш ставок", "Временное хранение для быстрого ответа API")
+  Container(rate_monitor, "Мониторинг и алерты", "Следит за выгрузками, доступностью API, ошибками синхронизации")
+}
+
+Container_Boundary(cc_bank_boundary, "Система кол‑центра банка") {
+  Container(cc_ui, "Интерфейс оператора", "Отображает ставки, позволяет работать с заявками")
+  Container(cc_backend, "Бэкенд кол‑центра", "Интеграция с API ставок и внутренними сервисами")
+  ContainerDb(cc_db, "БД кол‑центра", "Заявки, статусы, история взаимодействий")
+}
+
+System(sftp_server, "SFTP‑сервер", "Приём и хранение файлов; доступ по ключам; аудит операций")
+System(cc_partner_external, "Внешняя ИС партнёрского кол‑центра", "Импорт CSV и отображение ставок операторам")
+
+Rel(abs_app, abs_db, "Использует", "SQL")
+
+Rel(rate_sync, abs_app, "Читает ставки", "Только чтение, ограниченный набор полей")
+Rel(rate_sync, rate_cache_store, "Обновляет кэш", "Write")
+Rel(rate_api, rate_cache_store, "Читает для ответа", "Read, TTL ≤ 15 мин")
+Rel(rate_exporter, rate_cache_store, "Берёт данные для файла", "Read")
+Rel(rate_exporter, sftp_server, "Выгружает CSV + контрольную сумму", "SFTP, аутентификация по ключу")
+Rel(rate_monitor, rate_sync, "Отслеживает ошибки и задержки", "Метрики, логи")
+Rel(rate_monitor, rate_exporter, "Отслеживает статусы выгрузки", "Метрики, логи")
+
+Rel(cc_ui, cc_backend, "Вызывает сервисы", "HTTP")
+Rel(cc_backend, rate_api, "Запрашивает ставки", "HTTP API")
+Rel(cc_backend, cc_db, "Хранит/читает заявки", "SQL")
+
+Rel(sftp_server, cc_partner_external, "Партнёр забирает файл", "Периодический импорт, валидация контрольной суммы")
+
+UpdateRelStyle(rate_sync, abs_app, $textColor="black", $lineColor="black", $stroke=2)
+UpdateRelStyle(rate_exporter, sftp_server, $textColor="black", $lineColor="black", $stroke=2)
+UpdateRelStyle(cc_backend, rate_api, $textColor="black", $lineColor="black", $stroke=2)
+@enduml

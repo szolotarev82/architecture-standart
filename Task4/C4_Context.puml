@@ -1,0 +1,28 @@
+@startuml C4_Context_Rates_To_CallCenters
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Context.puml
+
+Person(operator_bank, "Оператор кол‑центра банка", "Консультирует клиентов по ставкам")
+Person(operator_partner, "Оператор партнёрского кол‑центра", "Консультирует клиентов по ставкам")
+
+System_Boundary(bank_ecosystem, "Экосистема банка") {
+  System(abs, "АБС", "Источник истины по ставкам и договорам")
+  System(rate_cache, "Сервис кэширования ставок", "Синхронизирует, кэширует и раздаёт ставки (API + файлы)")
+  System(cc_bank, "Система кол‑центра банка", "Интерфейс оператора, показывает ставки")
+}
+
+System(sftp, "SFTP‑сервер", "Защищённая передача файлов для партнёра")
+System(cc_partner, "Внешняя ИС партнёрского кол‑центра", "Импортирует и использует файлы со ставками")
+
+Rel(operator_bank, cc_bank, "Работает через интерфейс", "HTTP")
+Rel(operator_partner, cc_partner, "Работает через интерфейс", "Внутренний протокол партнёра")
+
+Rel(abs, rate_cache, "Предоставляет данные о ставках", "Только чтение (SELECT/API)")
+Rel(rate_cache, cc_bank, "Отдаёт актуальные ставки", "HTTP API (JSON)")
+Rel(rate_cache, sftp, "Выгружает файлы со ставками", "SFTP (CSV + контрольная сумма)")
+Rel(sftp, cc_partner, "Партнёр забирает и импортирует файл", "Периодический импорт по расписанию")
+
+UpdateRelStyle(abs, rate_cache, $textColor="black", $lineColor="black", $stroke=2)
+UpdateRelStyle(rate_cache, cc_bank, $textColor="black", $lineColor="black", $stroke=2)
+UpdateRelStyle(rate_cache, sftp, $textColor="black", $lineColor="black", $stroke=2)
+UpdateRelStyle(sftp, cc_partner, $textColor="black", $lineColor="black", $stroke=2)
+@enduml
