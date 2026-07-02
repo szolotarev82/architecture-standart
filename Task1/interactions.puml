@@ -1,0 +1,39 @@
+@startuml C4_Context
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Context.puml
+
+LAYOUT_TOP_DOWN()
+
+Person(customer, "Клиент")
+Person(branch_employee, "Сотрудник отделения")
+Person(back_office_deposits, "Бэк‑офис депозитов")
+Person(credit_officer, "Кредитный специалист")
+Person(call_center_agent, "Оператор кол‑центра")
+
+System_Boundary(bank_systems, "ИТ‑ландшафт банка") {
+  System(abs, "АБС")
+  System(internet_bank, "Интернет‑банк")
+  System(website, "Сайт")
+  System(call_center, "Кол‑центр")
+  System(sms_gateway, "СМС‑шлюз")
+}
+
+System_Ext(telecom_operator, "Телеком‑оператор")
+
+Rel(customer, website, "смотрит тарифы")
+Rel(customer, internet_bank, "делает платежи")
+
+Rel(branch_employee, abs, "оформляет продукты")
+Rel(back_office_deposits, abs, "согласовывает ставки")
+Rel(credit_officer, abs, "оценивает заявки")
+
+Rel(call_center_agent, call_center, "принимает звонки")
+Rel(call_center_agent, abs, "передаёт заявки")
+
+Rel(internet_bank, abs, "синхронизирует платежи")
+Rel(website, internet_bank, "отдаёт тарифы")
+Rel(website, call_center, "отдаёт скрипты")
+Rel(call_center, abs, "передает статусы")
+Rel(abs, sms_gateway, "запрашивает уведомления")
+Rel(sms_gateway, telecom_operator, "отправляет СМС")
+
+@enduml

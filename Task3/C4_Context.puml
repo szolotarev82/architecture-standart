@@ -1,0 +1,33 @@
+@startuml C4_Context_Deposit_MVP
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Context.puml
+
+LAYOUT_TOP_DOWN()
+
+Person(customer_new, "Клиент (новый)", "Подает заявку на сайте (ФИО, телефон)")
+Person(customer_existing, "Клиент (действующий)", "Подает заявку в интернет‑банке, подтверждает СМС‑кодом")
+Person(call_center_agent, "Оператор кол‑центра", "Обрабатывает заявки с сайта, звонит клиенту")
+Person(back_office_staff, "Сотрудник бэк‑офиса", "Подтверждает заявки в АБС, фиксирует условия")
+
+System_Boundary(bank_systems, "ИТ‑ландшафт банка (MVP депозиты)") {
+  System(website, "Сайт банка", "Витрина депозитов, приём заявок от новых клиентов")
+  System(internet_bank, "Интернет‑банк", "Персонализированные ставки, подача заявок, СМС‑подтверждение")
+  System(call_center, "Система кол‑центра", "Приём и обработка заявок, коммуникации")
+  System(abs, "АБС", "Источник истины: договоры, ставки, лимиты")
+  System(sms_service, "СМС‑сервис", "Оркестрация уведомлений, очереди, логи")
+}
+
+System_Ext(telecom_operator, "Телеком‑оператор", "Внешняя отправка СМС")
+
+Rel(customer_new, website, "просматривает ставки, подаёт заявку")
+Rel(customer_existing, internet_bank, "выбирает депозит, подтверждает СМС")
+Rel(call_center_agent, call_center, "обрабатывает заявки, звонит клиентам")
+Rel(back_office_staff, abs, "подтверждает заявки, фиксирует условия в АБС")
+
+Rel(website, call_center, "передаёт заявки (HTTP API)")
+Rel(website, internet_bank, "отдаёт справочные данные (тарифы, акции)")
+Rel(internet_bank, abs, "интеграция через промежуточный слой (не напрямую)", "Промежуточный слой защищает АБС от пиков")
+Rel(call_center, abs, "синхронизирует статусы и особые условия (API)")
+Rel(abs, sms_service, "запрашивает уведомления по клиентам (HTTP / очередь)")
+Rel(sms_service, telecom_operator, "отправляет СМС (протокол оператора)")
+
+@enduml
